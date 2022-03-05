@@ -1,4 +1,4 @@
-# OOP in C++ (Guide by Linus C)
+# OOP in C++
 
 ## Core Concepts of OOP
 ### OOP definition:
@@ -14,7 +14,11 @@ Elements can appear in several different forms.
 
 ## Class Notation
 ### Attributes and Methods:
-An attribute is a variable (propertie of the class), a Method is a function that belongs to the class and can change attributes.
+An attribute is a variable (propertie of the class), a Method is a function that belongs to the class and can change attributes.<br>
+Methods that don't change attributes should contain the expression const:
+```cpp
+void foo() const {}
+```
 ### Private and Public
 Private: and public: are keywords to define the range of attributes and functions of a class. Private elements of a class are only knewn to other members of the class, public elements are known to everyone.
 ### Interface:
@@ -97,4 +101,19 @@ Destructors can delete existing objects, which is very important to minimalize m
 ```
 A minimal version without body-content is generated automatically by the compiler, if no destructor is defined.
 
-## Variables and Methods of Class
+## Attributes and Methods of a Class
+### Class Attributes:
+We can create attributes that every object of a class has access to. For this purpose we add static in front of the definition of the attribute. Example:
+```cpp
+static int counter;
+```
+A class attribute can be private or public and can be acessed from outside of the class with the following syntax:
+```cpp
+MyClass::Attribut
+```
+It is as well possible to initialise a such attribute (but not with a constructor):
+```cpp
+int MyClass::Attribut = 5;
+```
+### Class Methods:
+In the same way we can define methods. The advantage is that this function already exists when no Object of this class has been constructed. This feature is rarely used.
