@@ -117,3 +117,38 @@ int MyClass::Attribut = 5;
 ```
 ### Class Methods:
 In the same way we can define methods. The advantage is that this function already exists when no Object of this class has been constructed. This feature is rarely used.
+
+## Operator Overload
+It is possible to redefine operators for a class as following:
+Operators (OP) that can be overloaded:
+
+**Arithmetic operators:** +, -, *, / ...
+**Logic operators:** and, or, not ...
+**Comparison operators:** ==, <=, >= ...
+**Others:** =, ++ ...
+
+### External overload
+The operator is defined as **function**. If we want to to use different types with the operator, we must use the external overload! f
+```cpp
+const Class operatorOP(class var, class const& var);
+```
+Example for external overload with cout: (It doesn't change the ostream class)
+```cpp
+ostream& operator<<(ostream& cout, int const& var);
+```
+Remark: It is also possible to get direct access to private variables of the class with the keyword friend followed by the function prototype inside of the class declaration but it is not reommended!
+
+### Internal overload
+The operator is defined as **method** of the class as followed:
+```cpp
+//Prototype inside class
+class MyClass{
+    MyClass operatorOP(MyClass);
+}
+//definition
+MyClass MyClass::operatorOP(MyClass){}
+```
+It is not necessairy to give the first operator of the operation.
+
+### Usage of the two methods
+If we want to change the variables of an object, it is recommended to use the internal overload to avoid the keyword friend. If it is possible to inplement the function with the help of methods that already exist, it is recommended to use the external overload.
