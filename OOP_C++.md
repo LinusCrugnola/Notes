@@ -11,6 +11,8 @@ A problem is decomposed in abstract pieces (modules) that ar as independant from
 Classes can inherit from higher level classes, that allows to reuse a lot of code.
 ### Polymorphism:
 Elements can appear in several different forms.
+***
+<br>
 
 ## Class Notation
 ### Attributes and Methods:
@@ -57,6 +59,9 @@ public:
         this->var = var; //access to the attribute
     }
 ```
+***
+<br>
+
 ## Constructors
 Constructors are used to to generate instances of a class (i.e. Objects). Constructors are functions without return type.
 ### Syntax of constructors:
@@ -92,6 +97,8 @@ MyClass(MyClass const& item) : element(element) {}
 ```
 Usually it is not necessary to define a custom copy constructor. But there are cases where it is very important to define a custom copy constructer e.g. a counter keeps track of the number of objects of an instace. This counter must be incremented by the copy constructer as well as by the constructor.<br>
 To avoid the copy of an Object, add ***= delete;*** behind the custom prototype.
+***
+<br>
 
 ## Destructors
 Destructors can delete existing objects, which is very important to minimalize memory usage. Syntax:
@@ -100,6 +107,8 @@ Destructors can delete existing objects, which is very important to minimalize m
 }
 ```
 A minimal version without body-content is generated automatically by the compiler, if no destructor is defined.
+***
+<br>
 
 ## Attributes and Methods of a Class
 ### Class Attributes:
@@ -117,6 +126,8 @@ int MyClass::Attribut = 5;
 ```
 ### Class Methods:
 In the same way we can define methods. The advantage is that this function already exists when no Object of this class has been constructed. This feature is rarely used.
+***
+<br>
 
 ## Operator Overload
 It is possible to redefine operators for a class.<br>
@@ -188,5 +199,64 @@ To Swap two instances of a standard type we can use the swap method:
 swap(a,b);
 ```
 We have to **overload swap** for MyClass first!
+***
+<br>
 
 ## Inheritance
+The main purpose of the principle of inheritance is, that we can define base-classes, that inherit properties from a higher level base-class. 
+```mermaid
+classDiagram
+    Animal <|-- Duck
+    Animal <|-- Fish
+    Animal <|-- Lion
+    Animal : + age
+    Animal : + gender
+    class Duck{
+        + quack()
+    }
+    class Fish{
+        + swim()
+    }
+    class Lion{
+        + roar()
+    }
+```
+As we can see in the image, the Classes Duck, Fish and Lion can inherit properties like **age** or **gender** from the super-class Animal but they also have propper methods like **quack()** for the duck. The flashs point in the direction of the super-class, i.e. a more general level.<br>
+
+### Inheritance syntax
+We use the following syntax to create inheritance:
+```cpp
+class SubClassName: public SuperClassName{
+    // Declaration of attributes and methods
+};
+```
+### Protected attributes
+The keyword **protected** (same usage as private and public) allows a protected access to an attribute from all the descending classes.
+
+### Maskage
+It is possible to mask the methods of a super-class so only some of the base-classes can use the method. For this purpose, we can just adapt the definition of the function in a base-class. If we specify a specialized method for one (sub-) class, the other classes at the same level still use the general method of the super-class. Even if it is possible, it is not recommended to mask attributes due to confusion. Meanwhile for methodes this is a very common practice!<br>
+It is also possible to use the general method with a class for which a specialized method is defined:
+```cpp
+BaseClass::methodName(int vars); // Calls general method
+methodName(int vars); // Calls specialized method
+```
+### Constructors
+The constructor of a subclass must call the constructor of the base-class to correctly initialize the attributes. The syntax is the following:
+```cpp
+SubClass(int x, int y)
+    : SuperClass(x), attribute(y){} // constructor of SuperClass is called
+```
+If the super-class has a default constructor this is not necessairy.<br>
+The constructor of a base-class always calls the constructor of the super-class until the top level class is reached. This class then constructs his attributes and after that the attributesof the sub-classes are added in descending order. The destructors are called in the reverse order.<br>
+The copy constructor has to be redefined as well to call the copy constructors of the super-class.
+
+### Constructor inheritance
+Constructors are not automatically inherited but it is possible to enforce the inheritance of the constructors of the super-class as followed:
+```cpp
+using SuperClass::SuperClass;
+```
+This method is not recommended because the constructors of the super-class don't initialize the attributes of the subclass.
+***
+<br>
+
+## Deep Copies
