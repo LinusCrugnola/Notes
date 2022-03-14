@@ -119,23 +119,25 @@ int MyClass::Attribut = 5;
 In the same way we can define methods. The advantage is that this function already exists when no Object of this class has been constructed. This feature is rarely used.
 
 ## Operator Overload
-It is possible to redefine operators for a class as following:
+It is possible to redefine operators for a class.<br>
 Operators (OP) that can be overloaded:
 
-**Arithmetic operators:** +, -, *, / ...
-**Logic operators:** and, or, not ...
-**Comparison operators:** ==, <=, >= ...
-**Others:** =, ++ ...
+**Arithmetic operators:** +, -, *, / ...<br>
+**Logic operators:** and, or, not ...<br>
+**Others:** =, ++ ...<br>
+**Comparison operators:** ==, <=, >= ...<br>
 
 ### External overload
-The operator is defined as **function**. If we want to to use different types with the operator, we must use the external overload! f
+The operator is defined as **function**. If we want to to use different types with the operator, we must use the external overload!
 ```cpp
-const Class operatorOP(class var, class const& var);
+const MyClass operatorOP(MyClass var1, MyClass const& var2);
 ```
+We add const to avoid notation like: **++(p+q);** or **p+q=f;**<br>
 Example for external overload with cout: (It doesn't change the ostream class)
 ```cpp
-ostream& operator<<(ostream& cout, int const& var);
+ostream& operator<<(ostream& cout, MyClass const& var);
 ```
+The return type **ostream&** allows notation like: **cout << p << endl;**<br>
 Remark: It is also possible to get direct access to private variables of the class with the keyword friend followed by the function prototype inside of the class declaration but it is not reommended!
 
 ### Internal overload
@@ -143,12 +145,48 @@ The operator is defined as **method** of the class as followed:
 ```cpp
 //Prototype inside class
 class MyClass{
-    MyClass operatorOP(MyClass);
+    MyClass operatorOP(MyClass const& var);
 }
-//definition
-MyClass MyClass::operatorOP(MyClass){}
+//definition outside for readability
+MyClass MyClass::operatorOP(MyClass){
+    //function body
+    return result;
+}
 ```
 It is not necessairy to give the first operator of the operation.
 
 ### Usage of the two methods
 If we want to change the variables of an object, it is recommended to use the internal overload to avoid the keyword friend. If it is possible to inplement the function with the help of methods that already exist, it is recommended to use the external overload.
+
+### Examples for some operators
+How to implement the comparison operator with internal overload:
+```cpp
+bool operator==(MyClass const&) const; // for p == q
+```
+How to increment a value with intenal overload:
+```cpp
+MyClass& operator++(); // for p++
+```
+Addition to the same variable (+=):
+```cpp
+MyClass& operator+=(MyClass const& val); // for p += q
+// Definition outside of class:
+MyClass& MyClass::operator+=(MyClass const& val){
+    // maths
+    return *this; // the variable itself
+}
+```
+It is very important that new variables are only created if necessairy (performance)<br>
+
+### Operator =
+There exist some special cases where we need to redefine the = operator but normally the default version already does everything that we need. If we want to avoid copies of large classes, it is possible to delete the = operator in the same way as the copy constructor (see copy constructor).
+
+### Swap function
+To Swap two instances of a standard type we can use the swap method:
+```cpp
+#include <utility>
+swap(a,b);
+```
+We have to **overload swap** for MyClass first!
+
+## Inheritance
