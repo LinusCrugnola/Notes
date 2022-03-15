@@ -237,7 +237,8 @@ The keyword **protected** (same usage as private and public) allows a protected 
 It is possible to mask the methods of a super-class so only some of the base-classes can use the method. For this purpose, we can just adapt the definition of the function in a base-class. If we specify a specialized method for one (sub-) class, the other classes at the same level still use the general method of the super-class. Even if it is possible, it is not recommended to mask attributes due to confusion. Meanwhile for methodes this is a very common practice!<br>
 It is also possible to use the general method with a class for which a specialized method is defined:
 ```cpp
-BaseClass::methodName(int vars); // Calls general method
+Ba`
+seClass::methodName(int vars); // Calls general method
 methodName(int vars); // Calls specialized method
 ```
 ### Constructors
@@ -256,7 +257,20 @@ Constructors are not automatically inherited but it is possible to enforce the i
 using SuperClass::SuperClass;
 ```
 This method is not recommended because the constructors of the super-class don't initialize the attributes of the subclass.
-***
-<br>
 
-## Deep Copies
+### Deep Copies
+If some class-members are pointers, the constructor must allocate new memory space for values that it assigns with the keyword **new**:
+```cpp
+: height(new double = h), //...
+```
+In this case it is possible that a copy of an object (e.g. for a function) that is deleted after the call of the function deletes the allocated memory. This can produce memory leaks (segmentation fault).<br>
+In this case it is possible to create **"Deep copies"** that copy the pointed memory as well. We have to redefine the copy constructor as folows:
+```cpp
+MyClass(const MyClass& obj)
+: height(new double(*(obj.height))), //...
+```
+The created object is a deep copie with its own height that is not deleted if we delete obj or the copied element.
+
+ ### Remark
+ To avoid the mentioned problems it is also necessairy to redefine the **operator=** in the same way. The destructor of the class must be redefined as well and has to delete all the allocated memory space with the keyword **delete** otherwise we take the risk of an overflow.
+ 
