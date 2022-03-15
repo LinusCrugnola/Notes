@@ -7,6 +7,7 @@ OOP means Object Oriented Programming i.e. the architecture of a program is deco
 Mechanism of hiding of data implementation by restricting the access to functions and variables.
 ### Abstraction:
 A problem is decomposed in abstract pieces (modules) that ar as independant from each other as possible. The user doesn't know about the implementation of functions inside a module.
+```
 ### Inheritance:
 Classes can inherit from higher level classes, that allows to reuse a lot of code.
 ### Polymorphism:
@@ -36,8 +37,21 @@ class Rectangle{
         //functions (class-internal use)
 }; //Do not forget semicolon!
 ```
+### Header Guard
+To avoid errors due to multiple inclusion we create a header guard for header files example file: filename.h:
+```cpp
+#ifndef FILENAME_H
+#define FILENAME_h
+// Declarations
+#endif
+```
+The FILENAME must be unique through the whole project!<br>
+It is as well possible to generate conditional functionality and to define a custom variable for the compilation, that includes other functions if defined.
 ### Implementation:
-The implementation of the methods as well as variables, that are not atributes of the class go into the ***.cc*** file (Namespace for variables). The interface of the class is included in the implementation with #include filename.
+The implementation of the methods as well as variables, that are not atributes of the class go into the ***.cc*** file (Namespace for variables). The interface of the class is included in the implementation:
+```cpp
+#include filename.h
+```
 ### Namespace
 Each class has its generic namespace. If variables are defined in the ***.cc*** file, they must be part of the non-named namespace, otherwise they are global variables that everyone has access to.
 Definition of a variable in the non-named namespace:
