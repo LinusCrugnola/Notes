@@ -30,8 +30,8 @@ It is more convenient to read and write in formated mode:
 ```cpp
 // the flots in and out must be defined:
 float character;
-in >> character;
-out << character << endl;
+file >> character;
+file << character << endl;
 ```
 If we include **sstream** it is also possible to get the whole line of a document:
 ```cpp
