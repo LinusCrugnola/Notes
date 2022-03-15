@@ -21,7 +21,7 @@ Methods that don't change attributes should contain the expression const:
 ```cpp
 void foo() const {}
 ```
-### Private and Public
+### Private and Public:
 Private: and public: are keywords to define the range of attributes and functions of a class. Private elements of a class are only knewn to other members of the class, public elements are known to everyone.
 ### Interface:
 The Interface of a class (Class definition) with the prototypes of the methods go in the **header file** (.h).\
@@ -49,7 +49,7 @@ namespace{
 }
 ```
 Another possibility is to add the keyword ***static*** in front of the definition.
-### This Pointer
+### This Pointer:
 A local variable can mask a variable on a higher level with the same name (e.g. function (method) parameter masks attribute of class) in this case we can use ***this-pointer*** to reach the level from which the function is called (class):
 ```cpp
 private:
@@ -138,7 +138,7 @@ Operators (OP) that can be overloaded:
 **Others:** =, ++ ...<br>
 **Comparison operators:** ==, <=, >= ...<br>
 
-### External overload
+### External overload:
 The operator is defined as **function**. If we want to to use different types with the operator, we must use the external overload!
 ```cpp
 const MyClass operatorOP(MyClass var1, MyClass const& var2);
@@ -151,7 +151,7 @@ ostream& operator<<(ostream& cout, MyClass const& var);
 The return type **ostream&** allows notation like: **cout << p << endl;**<br>
 Remark: It is also possible to get direct access to private variables of the class with the keyword friend followed by the function prototype inside of the class declaration but it is not reommended!
 
-### Internal overload
+### Internal overload:
 The operator is defined as **method** of the class as followed:
 ```cpp
 //Prototype inside class
@@ -166,10 +166,10 @@ MyClass MyClass::operatorOP(MyClass){
 ```
 It is not necessairy to give the first operator of the operation.
 
-### Usage of the two methods
+### Usage of the two methods:
 If we want to change the variables of an object, it is recommended to use the internal overload to avoid the keyword friend. If it is possible to inplement the function with the help of methods that already exist, it is recommended to use the external overload.
 
-### Examples for some operators
+### Examples for some operators:
 How to implement the comparison operator with internal overload:
 ```cpp
 bool operator==(MyClass const&) const; // for p == q
@@ -189,10 +189,10 @@ MyClass& MyClass::operator+=(MyClass const& val){
 ```
 It is very important that new variables are only created if necessairy (performance)<br>
 
-### Operator =
+### Operator =:
 There exist some special cases where we need to redefine the = operator but normally the default version already does everything that we need. If we want to avoid copies of large classes, it is possible to delete the = operator in the same way as the copy constructor (see copy constructor).
 
-### Swap function
+### Swap function:
 To Swap two instances of a standard type we can use the swap method:
 ```cpp
 #include <utility>
@@ -223,17 +223,17 @@ classDiagram
 ```
 As we can see in the image, the Classes Duck, Fish and Lion can inherit properties like **age** or **gender** from the super-class Animal but they also have propper methods like **quack()** for the duck. The flashs point in the direction of the super-class, i.e. a more general level.<br>
 
-### Inheritance syntax
+### Inheritance syntax:
 We use the following syntax to create inheritance:
 ```cpp
 class SubClassName: public SuperClassName{
     // Declaration of attributes and methods
 };
 ```
-### Protected attributes
+### Protected attributes:
 The keyword **protected** (same usage as private and public) allows a protected access to an attribute from all the descending classes.
 
-### Maskage
+### Maskage:
 It is possible to mask the methods of a super-class so only some of the base-classes can use the method. For this purpose, we can just adapt the definition of the function in a base-class. If we specify a specialized method for one (sub-) class, the other classes at the same level still use the general method of the super-class. Even if it is possible, it is not recommended to mask attributes due to confusion. Meanwhile for methodes this is a very common practice!<br>
 It is also possible to use the general method with a class for which a specialized method is defined:
 ```cpp
@@ -241,7 +241,7 @@ Ba`
 seClass::methodName(int vars); // Calls general method
 methodName(int vars); // Calls specialized method
 ```
-### Constructors
+### Constructors:
 The constructor of a subclass must call the constructor of the base-class to correctly initialize the attributes. The syntax is the following:
 ```cpp
 SubClass(int x, int y)
@@ -251,7 +251,7 @@ If the super-class has a default constructor this is not necessairy.<br>
 The constructor of a base-class always calls the constructor of the super-class until the top level class is reached. This class then constructs his attributes and after that the attributesof the sub-classes are added in descending order. The destructors are called in the reverse order.<br>
 The copy constructor has to be redefined as well to call the copy constructors of the super-class.
 
-### Constructor inheritance
+### Constructor inheritance:
 Constructors are not automatically inherited but it is possible to enforce the inheritance of the constructors of the super-class as followed:
 ```cpp
 using SuperClass::SuperClass;
@@ -271,6 +271,5 @@ MyClass(const MyClass& obj)
 ```
 The created object is a deep copie with its own height that is not deleted if we delete obj or the copied element.
 
- ### Remark
+ ### Remark:
  To avoid the mentioned problems it is also necessairy to redefine the **operator=** in the same way. The destructor of the class must be redefined as well and has to delete all the allocated memory space with the keyword **delete** otherwise we take the risk of an overflow.
- 
