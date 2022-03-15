@@ -237,8 +237,7 @@ The keyword **protected** (same usage as private and public) allows a protected 
 It is possible to mask the methods of a super-class so only some of the base-classes can use the method. For this purpose, we can just adapt the definition of the function in a base-class. If we specify a specialized method for one (sub-) class, the other classes at the same level still use the general method of the super-class. Even if it is possible, it is not recommended to mask attributes due to confusion. Meanwhile for methodes this is a very common practice!<br>
 It is also possible to use the general method with a class for which a specialized method is defined:
 ```cpp
-Ba`
-seClass::methodName(int vars); // Calls general method
+BaseClass::methodName(int vars); // Calls general method
 methodName(int vars); // Calls specialized method
 ```
 ### Constructors:
