@@ -7,7 +7,6 @@ OOP means Object Oriented Programming i.e. the architecture of a program is deco
 Mechanism of hiding of data implementation by restricting the access to functions and variables.
 ### Abstraction:
 A problem is decomposed in abstract pieces (modules) that ar as independant from each other as possible. The user doesn't know about the implementation of functions inside a module.
-```
 ### Inheritance:
 Classes can inherit from higher level classes, that allows to reuse a lot of code.
 ### Polymorphism:
