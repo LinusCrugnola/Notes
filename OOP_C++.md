@@ -298,7 +298,7 @@ public:&nbsp;&nbsp;|-> Public,&nbsp;&nbsp;|-> Protected
 protected:|-> Protected,|-> Protected
 private:|-> Private,|-> Private
 
-**Note:** Private attributes and members can't be inherited!<br><br>
+**Note:** The scope of private members of the superclass can't be changed with the access mode!<br><br>
 
 
 ### Maskage:
