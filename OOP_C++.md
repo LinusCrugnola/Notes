@@ -14,7 +14,8 @@ date: "20/02/2020"
 
 ### OOP definition:
 OOP means Object Oriented Programming i.e. the architecture of a program is decomposed in objects that follow four main principles:
- Encapsulation:
+ 
+### Encapsulation:
 Mechanism of hiding of data implementation by restricting the access to functions and variables.
 
 ### Abstraction:
@@ -39,10 +40,10 @@ void foo() const {}
 ```
 
 ### Private and Public:
-Private: and public: are keywords to define the range of attributes and functions of a class. Private elements of a class are only known to other members of the class, public elements are known to everyone.
+Private: and public: are keywords to define the range of attributes and functions of a class. Private elements of a class are only known inside the range of a class (-> by its members), meanwhile public elements can be acessed from outside the class.
 
 ### Interface:
-The Interface of a class (Class definition) with the prototypes of the methods go in the **header file** (.h).\
+The Interface of a class (Class definition) with the prototypes of the methods is defined in the **header file** (.h).\
 Example for a Header file (class definition):
 ```cpp
 class MyClass{
@@ -54,27 +55,28 @@ class MyClass{
         //functions (class-internal use)
 }; //Do not forget semicolon!
 ```
+***Remark:*** Public attributes should be avoided (Encapsulation). We should use get and set methodes instead!
 
-### Header Guard
+### Header Guard / Preprocessor directives
 To avoid errors due to multiple inclusion we create a header guard for header files example file: filename.h:
 ```cpp
 #ifndef FILENAME_H
 #define FILENAME_H
 // Declarations
-#endif
+#endif /* FILENAME_h */
 ```
 The FILENAME must be unique through the whole project!<br>
-It is as well possible to generate conditional functionality and to define a custom variable for the compilation, that includes other functions if defined.
+It is also possible to generate conditional functionality and to define a custom variable for the compilation, that includes other functions with such Preprocessor directives.
 
 ### Implementation:
-The implementation of the methods as well as variables, that are not attributes of the class go into the ***.cc*** file (Namespace for variables). The interface of the class is included in the implementation:
+The implementation of the methods as well as variables, that are not attributes of the class go into the ***.cc*** file. The interface of the class is included in the implementation:
 ```cpp
 #include "filename.h"
 ```
 
 ### Namespace
-Each class has its generic namespace. If variables are defined in the ***.cc*** file, they must be part of the non-named namespace, otherwise they are global variables that everyone has access to.
-Definition of a variable in the non-named namespace:
+Each class has its generic namespace. If variables are defined in the ***.cc*** file, they must be part of another namespace (e.g. the unnamed namespace), otherwise they are global.
+Definition of a variable and a function in the unnamed namespace:
 ```cpp
 namespace{
     int bar;
@@ -84,7 +86,6 @@ namespace{
 ```
 Another possibility is to add the keyword ***static*** in front of the definition.
 
-
 ### This Pointer:
 A local variable can mask a variable on a higher level with the same name (e.g. function (method) parameter masks attribute of class) in this case we can use ***this-pointer*** to reach the level from which the function is called (class):
 ```cpp
@@ -92,7 +93,7 @@ private:
     int bar; //attribute of class
 public:
     void foo(int bar){
-        this->bar = bar; //access to the attribute
+        this->bar = bar; //left side: attribute, right: parameter
     }
 ```
 
@@ -106,10 +107,11 @@ Constructors are used to to generate instances of a class (i.e. Objects). Constr
 ```cpp
 class MyClass{
     MyClass(int foo, int bar)
-    : attribute1(foo), attribute2(bar) //assignment of attributes
+    : attribute1(foo), attribute2(bar) //initializer list
     {}  //body of constructor (validation)
 }
 ```
+***Remark:*** the initializer list must initialize the attributes in the same order as they are defined in the class definition. If we initialize objects in this list, they are only created once, if we initialize them in the function body, a copy is created and the original object is thrown away!
 
 ### Default constructor:
 It is possible to create constructors, that assign default values or no values to attributes:
@@ -126,27 +128,28 @@ MyClass() = default;
 
 ### Remarks:
 * A Constructor can call another constructor.
-* It is possible to assign default values to attributes in the declaration of the class as well.
+* It is possible to assign default values to attributes in the declaration of the class as well (if they are not static).
 
 ### Copy constructor:
-Generates a copy of an object. Syntax:
+Generates a copy of an object, i.e. bar in the following case:
 ```cpp
 MyClass Copy_Name(bar);
 ```
-this calls the standard copy constructor that automatically generates the new instance. A custom prototype is defined like:
+this calls the standard copy constructor that automatically generates the new instance and copies all attributes. A custom prototype is defined like:
 ```cpp
-MyClass(MyClass const& bar) : element(element) {}
+MyClass(const MyClass& bar) : element(element) {}
 ```
-Usually it is not necessary to define a custom copy constructor. But there are cases where it is very important to define a custom copy constructor e.g. a counter keeps track of the number of objects of an instance. This counter must be incremented by the copy constructor as well as by the constructor.<br>
-To avoid the copy of an Object, add ***= delete;*** behind the custom prototype.
+Usually it is not necessary to define a custom copy constructor. But there are cases where it is very important to define a custom copy constructor e.g. a counter keeps track of the number of objects of an class. This counter must be incremented by the copy constructor as well as by the constructor.<br><br>
+* To force the generation of a default copy constructor by the compiler add ***= default;*** behind the prototype.
+* To forbid the copy of instances of a class, add ***= delete;*** behind the custom prototype.
 
 ---
 <br>
 
 ## Destructors
-Destructors can delete existing objects, which is very important to minimize memory usage. Syntax:
+Destructors can delete existing objects, which is important to minimize memory usage. Syntax:
 ```cpp
-~MyClass(){//free memory allocated by class
+~MyClass(){ //free memory dynamically allocated by class
 }
 ```
 A minimal version without body-content is generated automatically by the compiler, if no destructor is defined.
@@ -157,21 +160,31 @@ A minimal version without body-content is generated automatically by the compile
 ## Attributes and Methods of a Class
 
 ### Class Attributes:
-We can create attributes that every object of a class has access to. For this purpose we add static in front of the definition of the attribute. Example:
-```cpp
-static int counter;
-```
-A class attribute can be private or public and can be accessed from outside of the class with the following syntax:
+A class attribute can be private or public and if public it can be accessed from outside of the class with the following syntax:
 ```cpp
 MyClass::Attribute
 ```
-It is as well possible to initialize a such attribute (but not with a constructor):
+It is as well possible to initialize a such attribute by default without using the constructor:
 ```cpp
 int MyClass::Attribute = 5;
+```
+**Remark:** It is also possible to get direct access to private variables of the class with the keyword friend followed by the function prototype inside of the class declaration but it is not recommended!
+
+### Static attributes:
+It is possible to declare static members of a class. They are defined in the namespace of the class but do not belong to one specific object, they stay the same for every instance of the class. Usually static members are initialized in the c-file outside of the class definition:
+```cpp
+class Foo{
+    static int bar; //declaration
+}; //end of class
+
+int Foo::bar = 5; //initialization
 ```
 
 ### Class Methods:
 In the same way we can define methods. The advantage is that this function already exists when no Object of this class has been constructed. This feature is rarely used.
+
+### Static methods:
+Methods can be static as well which means that they can be used without an object existing.
 
 ---
 <br>
@@ -189,15 +202,15 @@ Operators (OP) that can be overloaded:
 ### External overload:
 The operator is defined as **function**. If we want to to use different types with the operator, we must use the external overload!
 ```cpp
-const MyClass operatorOP(MyClass bar1, MyClass const& var2);
+const MyClass operator+(MyClass bar1, MyClass const& var2);
 ```
 We add const to avoid notation like: **++(p+q);** or **p+q=f;**<br>
-Example for external overload with cout: (It doesn't change the ostream class)
+Example for external overload with cout: (It doesn't change he ostream class)
 ```cpp
 ostream& operator<<(ostream& cout, MyClass const& bar);
 ```
-The return type **ostream&** allows notation like: **cout << p << endl;**<br>
-Remark: It is also possible to get direct access to private variables of the class with the keyword friend followed by the function prototype inside of the class declaration but it is not recommended!
+The return type **ostream&** allows notation like: **cout << p << endl;** <br>
+
 
 
 ### Internal overload:
@@ -205,15 +218,15 @@ The operator is defined as **method** of the class as followed:
 ```cpp
 //Prototype inside class
 class MyClass{
-    MyClass operatorOP(MyClass const& bar);
+    MyClass operator+(MyClass const& bar);
 }
 //definition outside for readability
-MyClass MyClass::operatorOP(MyClass){
+MyClass MyClass::operator+(MyClass){
     //function body
     return result;
 }
 ```
-It is not necessairy to give the first operator of the operation.
+It is not necessairy to give the first operand of the operation.
 
 
 ### Usage of the two methods:
@@ -251,7 +264,7 @@ To Swap two instances of a standard type we can use the swap method:
 #include <utility>
 swap(foo, bar);
 ```
-We have to **overload swap** for MyClass first!
+If we want to use swap for a class have to **overload swap** for it first!
 
 ---
 <br>
@@ -281,17 +294,17 @@ As we can see in the image, the Classes Duck, Fish and Lion can inherit properti
 ### Inheritance syntax:
 We use the following syntax to create inheritance:
 ```cpp
-class SubClassName: public SuperClassName{
+class SubClassName : public SuperClassName{
     // Declaration of attributes and methods
 };
 ```
 
 ### Protected attributes:
-The keyword **protected** (same usage as private and public) allows a protected access to an attribute from all the descending classes.
+The keyword **protected** (same usage as private and public) allows a protected access to an attribute from all the descending classes. Protected attributes behave like private attributes in the base class but the behaviour can be changed while inheriting. Private attributes are inherited as well.
 
 
 ### Access Mode:
-The access mode (in the example above it is public) defines how the derived members of the BaseClass are included in the SubClass:<br>
+The access mode (in the example above it is public) defines how the protected members of the BaseClass are included in the SubClass:<br>
 Access Mode | Public members | Protected members
 ---|---|---
 public:&nbsp;&nbsp;|-> Public,&nbsp;&nbsp;|-> Protected
@@ -302,7 +315,7 @@ private:|-> Private,|-> Private
 
 
 ### Maskage:
-It is possible to mask the methods of a super-class so only some of the base-classes can use the method. For this purpose, we can just adapt the definition of the function in a base-class. If we specify a specialized method for one (sub-) class, the other classes at the same level still use the general method of the super-class. Even if it is possible, it is not recommended to mask attributes due to confusion. Meanwhile for methods this is a very common practice!<br>
+It is possible to mask the methods of a super-class so only some of the base-classes can use the method. For this purpose, we can just adapt the definition of the function in a base-class. If we specify a specialized method for one (sub-) class, the other classes at the same level still use the general method of the super-class. Even if it is possible, it is not recommended to mask attributes due to confusion. Meanwhile for methods this is a common practice!<br>
 It is also possible to use the general method with a class for which a specialized method is defined:
 ```cpp
 BaseClass::methodName(int bar); // Calls general method
@@ -310,12 +323,12 @@ methodName(int bar); // Calls specialized method
 ```
 
 ### Constructors:
-The constructor of a subclass must call the constructor of the base-class to correctly initialize the attributes. The syntax is the following:
+The constructor of a subclass must call the constructor of the base-class at the start of the initializer list to correctly initialize the attributes. The syntax is the following:
 ```cpp
 SubClass(int x, int y)
     : SuperClass(x), attribute(y){} // constructor of SuperClass is called
 ```
-If the super-class has a default constructor this is not necessary.<br>
+If the super-class has a default constructor this is not necessary (but good practice).<br>
 The constructor of a base-class always calls the constructor of the super-class until the top level class is reached. This class then constructs his attributes and after that the attributes of the sub-classes are added in descending order. The destructors are called in the reverse order.<br>
 The copy constructor has to be redefined as well to call the copy constructors of the super-class.
 
@@ -329,17 +342,17 @@ This method is not recommended because the constructors of the super-class don't
 
 
 ### Deep Copies:
-If some class-members are pointers, the constructor must allocate new memory space for values that it assigns with the keyword **new**:
+If some class-members are pointers, and the constructor of this class allocates new memory space for values that it assigns with the keyword **new**:
 ```cpp
 : height(new double = bar), //...
 ```
-In this case it is possible that a copy of an object (e.g. for a function) that is deleted after the call of the function deletes the allocated memory. This can produce memory leaks (segmentation fault).<br>
-In this case it is possible to create **"Deep copies"** that copy the pointed memory as well. We have to redefine the copy constructor as follows:
+then it is possible that a copy of an object (e.g. for a function) that is deleted after the call of the function deletes the allocated memory. This can produce memory leaks (segmentation fault).<br>
+In this case we must create a **"Deep copy"** of the class that copies the memory pointed to as well. We have to redefine the copy constructor as follows:
 ```cpp
 MyClass(const MyClass& bar)
 : height(new double(*(bar.attribute))), //...
 ```
-The created object is a deep copy with its own height that is not deleted if we delete obj or the copied element.
+The created object is a deep copy with its own height.
 
 
 ### Remark:
@@ -360,7 +373,7 @@ virtual void foo(object& bar);
 
 
 ### Virtual destructors:
-Destructors of inheritance structures ***need to be defined*** as virtual to avoid memory leaks. Note that on the other hand a ***constructor can't be virtual*** 
+Destructors of inheritance structures ***must be defined*** as virtual to avoid memory leaks. Note that on the other hand ***constructors can't be virtual*** 
 
 
 ### Overloading:
@@ -426,7 +439,7 @@ A Class can directly inherit from multiple classes:
 ```cpp
 class SubClass : public SuperClass1, private SuperClass2 //...
 ```
-**Note:** the inheritance order of the classes is important in the construction and destruction of the class!
+**Note:** the inheritance order of the classes is important in the construction and destruction of the class, we must initialize the base class objects in the same list as they are mentioned in the inheritance list!
 
 
 ### Construction and Destruction:
@@ -439,19 +452,20 @@ If a Superclass has a default constructor, it must not be called but it is good 
 
 
 ### Shadowing in MI context:
-A problem that can occur is that a class inherits from to SuperClasses that have a function with the same name (even if the input types differ). One solution to this is using the :: operator, a more common practice is to define in the SubClass which one of the methods should be inherited with the help of the keyword ***using***. 
+A problem that can occur is that a class inherits from two SuperClasses that have a function with the same name (even if the input types differ). One solution to this is using the :: operator, a more common practice is to define in the SubClass which one of the methods should be inherited with the help of the keyword ***using***. With this redirection we can use the function as normal class method of the subclass.
 ```cpp
 using SuperClass::foo; // foo can be a method or an attribute (no parentheses)
 ```
-A third possible solution would be to redefine the method in the subclass where it is as well possible to call the two parent methods.
+A third possible solution would be to redefine the method in the subclass where it is as well possible to call the two parent methods. In this way we can even define, in which case we want to use which one of the functions.
 
 
 ### Virtual class:
-It is possible that a class can indirectly inherit multiple times from the same SuperSuperClass. In this case we possibly don't want to have all the attributes defined 2x in the SubClass. To harm that multiple inclusion of attributes, we can create a virtual SuperClass:
+It is possible that a class can indirectly inherit multiple times from the same SuperSuperClass. In this case we possibly don't want to have all the attributes defined 2x in the SubClass. To harm that multiple inclusion of attributes, we can inherit virtually from a SuperClass:
 ```cpp
-class SubClass : public virtual SuperClass
+class SubClass : virtual SuperClass
 ```
-**Note:** this is not an abstract class or interface!
+**Note:** this is not an abstract class or interface!<br>
+If we now have a class that inherits from two classes that inherit virtually from SuperClass, it has only one instance of SuperClass
 
 
 ### Virtual inheritance and Constructor:
