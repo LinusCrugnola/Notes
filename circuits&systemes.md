@@ -45,7 +45,7 @@ Courant en avance: capacitif
 ## Triphasé
 Formulaire page 36
 
-![Triangle étoile](triangle-étoile.JPG)
+![Triangle étoile](images/triangle-étoile.JPG)
 ## Transitoire
 
 $i_c(t) = C\frac{dU}{dt}$
@@ -70,8 +70,8 @@ C & D \end{array} \right)
            -I_2
          \end{bmatrix}
  $
-![conversion](conversion.JPG)
-![simple](chaine%20simple.JPG)
+![conversion](images/conversion.JPG)
+![simple](images/chaine%20simple.JPG)
 
 ## Diagramme de bode
 $G_{dB} = 10\log_{10} \frac{P_2}{P_1} = 10\log_{10} \frac{U_2^2/R_2}{U_1^2/R_1} = 20\log_{10}\frac{U_2}{U_1}- 10\log_{10} \frac{R_2}{R_1}$
