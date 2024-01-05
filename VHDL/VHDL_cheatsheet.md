@@ -103,7 +103,13 @@ STD_LOGIC_VECTOR as array of type std_logic (don't forget to include the ieee li
 ```vhdl
 signal signal_name : STD_LOGIC_VECTOR(high downto low);
 ```
-TODO: other types and operations!!!
+Note high here is size-1 if low is 0
+
+Operations:
+```vhdl
+target_array_object(index_range) <= “010-10-”
+target_array_object(index_range) <= base_type_object_1 & base_type_object_1 -- concatenation
+```
 
 ### Array types:
 Arrays can be defined as follows:
@@ -114,6 +120,28 @@ type array_type_name_3_2D is array (integer range <>) of array_type_name_2;
 -- signal declaration
 signal signal_1_name : array_type_name_1;
 signal signal_2_name : array_type_name_3(low to high);
+```
+Operations:
+```vhdl
+target_array_object(index) <= base_type_object;
+target_array_object <= (value1, value2, ...);
+target_array_object <= (idx_1=>value_1, idx_2=>value_2, …);
+target_array_object <= (idx_1=>value_1, idx_2|idx_3=>value_2, …);
+target_array_object <= (idx_1=>value_1, others=>value_2); -- fill the remaining
+```
+
+### Signed and Unsigned types:
+Binary representation for numbers from IEEE numeric_std library
+```vhdl
+signal name_u : unsigned(size-1 downto 0);
+signal name : signed(size-1 downto 0);
+```
+Arithmetic operations:
+![](op1.png)
+![](op2.png)
+Type conversions (no hardware ressources required):
+```vhdl
+unsigned(std_logic_vector); --for example
 ```
 
 ### Concurrent signal assignments:
@@ -242,3 +270,136 @@ begin
     end if;
 end process p_seq;
 ```
+
+## State machines (FSM)
+Use a Flipflop to store the present state as shown [above](#describing-edge-triggered-registers-flipflops)
+Use a process for the output and transition logic and enumerated types for the states:
+```vhdl
+architecture rtl of my_fsm_states is
+    -- type declarations for FSM states
+    type state_type is (StateA, StateB, StateC);
+    -- signal declaration
+    signal STATExDN, STATExDP : state_type;
+begin
+
+t_o_logic: process (STATExDP, FSM_input_signals) is
+begin
+    -- Default assignments
+    STATExDN <= STATExDP;
+    FSM_output_signal_1 <= default_output_expression;
+    case STATExDP is
+        when state_1 =>
+        -- Conditional statements based on inputs
+        if condition_1_on_FSM_input_signals then
+            ...
+        end if;
+        when state_2 =>
+        ...
+    end case;
+end process t_o_logic;
+```
+
+## Simulation Testbenches
+### Cycle accurate simlation:
+Simple but only useful for small blocks, proceeds cycle by cycle
+```vhdl
+p_ALL : process ( )
+begin
+-- APPLY STIMULI
+-- CHECK RESPONSES
+-- GO to NEXT CYCLE
+end process p_ALL;
+```
+
+### Non cycle accurate simulation:
+Defines only the functional stimuli and the responses but not their exact timing, this approach is much more flexible. Done using different processes that run when the inputs change.
+
+### Time and Delays
+Only usable in simulation, not on hardware
+```vhdl
+-- change signal after time delay:
+signal <= exmpression after time;
+-- retain and propagate changes after time delay:
+signal <= transport expression after time;
+-- wait for any change in any of the listed signals:
+wait on signal_1, signal_2, ...;
+-- wait until a condition is fullfilled:
+wait until <boolean_expression>;
+-- wait for amount of time:
+wait for waiting_time;
+-- wait forever:
+wait;
+```
+
+### Assertions
+Check expression and report the string to simulator console, severity levels are ```NOTE, WARNING, ERROR, FAILURE``` failure usually aborts the simulation.
+```vhdl
+assert <boolean_expression> report string severity severity_level;
+```
+
+### Creating a clock and a reset
+Best practice is to define a clock and a reset like this:
+```vhdl
+constant CLK_PERIOD : time := 10ns;
+constant CLK_HIGH : time := CLK_PERIOD / 2;
+constant CLK_LOW : time := CLK_PERIOD / 2;
+...
+begin -- architecture
+    -- Clock Generation
+    p_clk : process
+    begin
+        CLKxC <= ‘0’;
+        wait for CLK_LOW;
+        CLKxC <= ‘1’;
+        wait for CLK_HIGH;
+    end process p_clk;
+
+    -- Async Reset Generation
+    p_rst : process
+    begin
+        RSTxRB <= ‘0’;
+        wait until CLKxC’event and CLKxC=‘1’;
+        wait until CLKxC’event and CLKxC=‘1’;
+        wait for 1ns;
+        RSTxRB <= ‘1’;
+        wait;
+    end process p_rst;
+    ...
+```
+
+### Applying stimuli and checking responses
+Can be done in one common process if both steps are tightly related with short latency or in independent processes if there are large latencies or a decoupled timing.
+Example for hardcoded stimuli and responses:
+```vhdl
+-- Stimuli Application
+p_stim : process
+begin
+    INPUTxS <= ‘0’; -- Initial Input during Reset
+
+    wait until CLKxC’EVENT and CLKxC=‘1’ and RSTxRB = ‘1’;
+    wait for STIM_APPL_DELAY;
+    INPUTxS <= ‘1’; -- First cycle
+    
+    wait until CLKxC’EVENT and CLKxC=‘1’;
+    wait for STIM_APPL_DELAY;
+    INPUTxS <= ‘0’; -- Second cycle
+    
+    wait;
+end process p_stim;
+
+-- Response Checking
+p_resp : process
+begin
+    wait until CLKxC’EVENT and CLKxC=‘1’ and RSTxRB = ‘1’;
+    wait for RESP_CHK_DELAY;
+    assert OUTxS = exp_response_1 REPORT “Mismatch 1” severity FAILURE;
+    
+    wait until CLKxC’EVENT and CLKxC=‘1’;
+    wait for RESP_CHK_DELAY;
+    assert OUTxS = exp_response_2 REPORT “Mismatch 2” severity FAILURE;
+    
+    wait;
+end process p_stim;
+```
+
+See the [slides here](https://moodle.epfl.ch/pluginfile.php/2841887/mod_resource/content/6/DSD-Lecture-4-VHDL-for-Testbenches.pdf#page=17) for a more sophisticated version with Response acquisition check.
