@@ -403,3 +403,23 @@ end process p_stim;
 ```
 
 See the [slides here](https://moodle.epfl.ch/pluginfile.php/2841887/mod_resource/content/6/DSD-Lecture-4-VHDL-for-Testbenches.pdf#page=17) for a more sophisticated version with Response acquisition check.
+
+
+## Sequential code in processes
+This can make the implementation of algorithms very convenient but it often results in unnecessairy complex hardware and there are a lot of pitfalls. Example code:
+```vhdl
+process (a) is
+    variable acc, q, r : unsigned(7 downto 0);
+    begin
+        acc := unsigned(a(0));
+        for i in 1 to 3 loop
+            acc := acc + unsigned(a(i));
+        end loop;
+        q := "000" & acc(7 downto 3); -- /8
+        r := "00000" & acc(2 downto 0); -- rem 8
+        if r > 3 then
+            q := q + 1;
+        end if;
+        outp <= std_logic_vector(q);
+end process;
+```
