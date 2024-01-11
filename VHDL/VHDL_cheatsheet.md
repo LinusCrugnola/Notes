@@ -423,3 +423,5 @@ process (a) is
         outp <= std_logic_vector(q);
 end process;
 ```
+
+## TODO: add concrete code and testbench example
