@@ -137,8 +137,10 @@ signal name_u : unsigned(size-1 downto 0);
 signal name : signed(size-1 downto 0);
 ```
 Arithmetic operations:
+
 ![](op1.png)
 ![](op2.png)
+
 Type conversions (no hardware ressources required):
 ```vhdl
 unsigned(std_logic_vector); --for example
