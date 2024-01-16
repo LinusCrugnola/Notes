@@ -424,4 +424,754 @@ process (a) is
 end process;
 ```
 
-## TODO: add concrete code and testbench example
+## Example for a VHDL Component (Lab04 Arbiter)
+```vhdl
+--=============================================================================
+-- @file arbiter.vhdl
+--=============================================================================
+-- Standard library
+library ieee;
+-- Standard packages
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+--=============================================================================
+--
+-- arbiter
+--
+-- @brief This file specifies a basic arbiter circuit for lab 4 in EE-334 at EPFL
+--
+--=============================================================================
+
+--=============================================================================
+-- ENTITY DECLARATION FOR ARBITER
+--=============================================================================
+entity arbiter is
+    generic (
+        CNT_TIMEOUT : integer := 250000000 -- Timeout after 2 seconds @125 MHz
+    );
+    port (
+        CLKxCI : in std_logic;
+        RSTxRI : in std_logic;
+
+        Key0xSI : in std_logic;
+        Key1xSI : in std_logic;
+
+        GLED0xSO : out std_logic;
+        RLED0xSO : out std_logic;
+        GLED1xSO : out std_logic;
+        RLED1xSO : out std_logic
+    );
+end arbiter;
+
+--=============================================================================
+-- ARCHITECTURE DECLARATION
+--=============================================================================
+architecture rtl of arbiter is
+
+    type ArbiterFSM_t is (WAIT_REQ0, WAIT_REQ1, GRANT_SS0, GRANT_SS1);
+
+    signal STATExSN, STATExSP : ArbiterFSM_t;
+    signal CountxDN, CountxDP : unsigned(28-1 downto 0); -- ceil(log2(CNT_TIMEOUT)) = 28
+
+    signal CountTimeoutxS : std_logic; -- If 1, counter has timed out (block increments)
+    signal CountENxS      : std_logic; -- If 1, allow counter to increment
+    signal CountCLRxS     : std_logic; -- If 1, reset the counter
+
+--=============================================================================
+-- ARCHITECTURE BEGIN
+--=============================================================================
+begin
+
+--=============================================================================
+-- STATE AND DATA REGISTERS
+-- Processes for updating the state and data registers
+--=============================================================================
+    process (CLKxCI, RSTxRI) is
+    begin
+        if (RSTxRI = '1') then
+        STATExSP <= WAIT_REQ0;
+        CountxDP <= (others => '0');
+        elsif (CLKxCI'event and CLKxCI = '1') then
+        STATExSP <= STATExSN;
+        CountxDP <= CountxDN;
+        end if;
+    end process;
+
+--=============================================================================
+-- FSM
+-- Process defining the FSM for the arbiter
+--=============================================================================
+    process (all) is
+    begin
+        STATExSN   <= STATExSP;
+        CountCLRxS <= '0';
+        GLED0xSO   <= '0';
+        GLED1xSO   <= '0';
+
+        -- FSM for arbiter
+        --
+        -- The WAIT_REQX states are used to wait for a request from a user with
+        -- priority, that is, if we are currently in GRANT_SS1 serving U1, and the
+        -- counter reaches the timeout, we will switch to WAIT_REQ0. We still give
+        -- access to U1 for as long as U0 does not request access but U0 can take
+        -- access from U1 in WAIT_REQ0 or GRANT_SS1 as U1 has already been served for 2 seconds.
+        -- We need to default to give one of them access, either by starting in a state
+        -- where one of them gets access by default or by for example just having a counter
+        -- that counts 0 and 1 and based on that if they come at the same time we give
+        -- access to U0 or U1 based on the counter
+        --
+        -- The GRANT_SSX states are used to grant access to the user until the user
+        -- removes their request or a timeout occurs and another user requests access
+        -- after the timeout has occured.
+        case STATExSP is
+
+        -- WAIT_REQ0: State for waiting for request from U0. We thus prioritize
+        -- requests from U0 and otherwise serve U1 for as long U1 requests access.
+        -- We can also go into GRANT_SS1 if U1 removes its request (which resets the counter)
+        -- and then makes another request
+        when WAIT_REQ0 =>
+            if Key0xSI = '1' then
+            GLED0xSO <= '1';
+            STATExSN <= GRANT_SS0;
+            elsif Key1xSI = '1' then
+            GLED1xSO <= '1';
+            STATExSN <= GRANT_SS1;
+            end if;
+
+        -- WAIT_REQ1: Prioritize requests from U1, otherwise serve U0
+        when WAIT_REQ1 =>
+            if Key1xSI = '1' then
+            GLED1xSO <= '1';
+            STATExSN <= GRANT_SS1;
+            elsif Key0xSI = '1' then
+            GLED0xSO <= '1';
+            STATExSN <= GRANT_SS0;
+            end if;
+
+        -- GRANT_SS0: Granted U0 access and serves it until request is removed or
+        -- U1 makes a request after timeout.
+        when GRANT_SS0 =>
+            GLED0xSO <= Key0xSI;
+
+            if (Key1xSI = '1' and CountTimeoutxS = '1') or (Key0xSI = '0' and Key1xSI = '1') then
+            GLED0xSO   <= '0';
+            GLED1xSO   <= '1';
+            CountCLRxS <= '1';
+            STATExSN   <= GRANT_SS1;
+            elsif Key0xSI = '0' or CountTimeoutxS = '1' then
+            CountCLRxS <= '1';
+            STATExSN   <= WAIT_REQ1;
+            end if;
+
+        -- GRANT_SS1: Granted U1 access and serves it until request is removed or
+        -- U0 makes a request after timeout.
+        when GRANT_SS1 =>
+            GLED1xSO <= Key1xSI;
+
+            if (Key0xSI = '1' and CountTimeoutxS = '1') or (Key0xSI = '1' and Key1xSI = '0') then
+            GLED0xSO   <= '1';
+            GLED1xSO   <= '0';
+            CountCLRxS <= '1';
+            STATExSN   <= GRANT_SS0;
+            elsif Key1xSI = '0' or CountTimeoutxS = '1' then
+            CountCLRxS <= '1';
+            STATExSN   <= WAIT_REQ0;
+            end if;
+        when others => NULL;
+        end case;
+    end process;
+
+--=============================================================================
+-- COUNTER LOGIC
+--=============================================================================
+
+    -- Counter starts counting as soon as we enter a full state, so, we only count full cycles of access
+    CountENxS      <= '1' when (STATExSP = GRANT_SS0 or STATExSP = GRANT_SS1) else '0';
+    CountTimeoutxS <= '1' when (CountxDP = CNT_TIMEOUT - 1) else '0';
+
+    CountxDN <= (others => '0') when (CountCLRxS = '1') else
+                CountxDP + 1    when (CountENxS  = '1' and CountTimeoutxS = '0') else
+                CountxDP;
+
+--=============================================================================
+-- OUTPUT LOGIC
+--=============================================================================
+
+RLED0xSO <= '1' when Key0xSI = '1' and GLED0xSO = '0' else '0';
+RLED1xSO <= '1' when Key1xSI = '1' and GLED1xSO = '0' else '0';
+
+end rtl;
+--=============================================================================
+-- ARCHITECTURE END
+--=============================================================================
+```
+
+## Example for a simple VHDL Testbench (Lab03 Keylock)
+```vhdl
+--=============================================================================
+-- @file toplevel_tb.vhdl
+--=============================================================================
+-- Standard library
+library ieee;
+library std;
+-- Standard packages
+use std.env.all;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+--=============================================================================
+--
+-- toplevel_tb
+--
+-- @brief This file specifies the testbench for the toplevel for lab3
+--
+--=============================================================================
+
+entity toplevel_tb is
+end entity toplevel_tb;
+
+architecture tb of toplevel_tb is
+
+--=============================================================================
+-- TYPE AND CONSTANT DECLARATIONS
+--=============================================================================
+  constant CLK_HIGH   : time := 4 ns;
+  constant CLK_LOW    : time := 4 ns;
+  constant CLK_PERIOD : time := CLK_LOW + CLK_HIGH;
+  constant CLK_STIM   : time := 1 ns;
+
+--=============================================================================
+-- COMPONENT DECLARATIONS
+--=============================================================================
+  component toplevel is
+    port (
+      CLKxCI : in std_logic;
+      RSTxRI : in std_logic;
+
+      Push0xSI : in std_logic;
+      Push1xSI : in std_logic;
+      Push2xSI : in std_logic;
+      Push3xSI : in std_logic;
+
+      RLEDxSO : out std_logic;
+      GLEDxSO : out std_logic
+    );
+  end component toplevel;
+
+--=============================================================================
+-- SIGNAL DECLARATIONS
+--=============================================================================
+  signal CLKxC : std_logic;
+  signal RSTxR : std_logic;
+
+  signal Push0xS : std_logic;
+  signal Push1xS : std_logic;
+  signal Push2xS : std_logic;
+  signal Push3xS : std_logic;
+
+  signal RLEDxS : std_logic;
+  signal GLEDxS : std_logic;
+
+begin
+
+    --=============================================================================
+    -- COMPONENT INSTANTIATIONS
+    --=============================================================================
+
+    -- Instantiate dut
+    dut: toplevel
+        port map (
+            CLKxCI   => CLKxC,
+            RSTxRI   => RSTxR,
+            Push0xSI => Push0xS,
+            Push1xSI => Push1xS,
+            Push2xSI => Push2xS,
+            Push3xSI => Push3xS,
+            RLEDxSO  => RLEDxS,
+            GLEDxSO  => GLEDxS
+        );
+
+    --=============================================================================
+    -- CLOCK PROCESS
+    -- Process for generating the clock signal
+    --=============================================================================
+    p_clock: process is
+    begin
+        CLKxC <= '0';
+        wait for CLK_LOW;
+        CLKxC <= '1';
+        wait for CLK_HIGH;
+    end process p_clock;
+
+    --=============================================================================
+    -- RESET PROCESS
+    -- Process for generating the reset signal
+    --=============================================================================
+    p_reset: process is
+    begin
+        RSTxR <= '1';
+        wait until CLKxC'event and CLKxC = '1'; -- Align to rising-edge
+        wait for (2*CLK_PERIOD + CLK_STIM);     -- Wait 2 CC and a little after edge
+        RSTxR <= '0';
+        wait;
+    end process p_reset;
+
+    --=============================================================================
+    -- TEST PROCESSS
+    --=============================================================================
+    p_stim: process is
+    begin
+
+        Push0xS <= '0';
+        Push1xS <= '0';
+        Push2xS <= '0';
+        Push3xS <= '0';
+        wait until CLKxC'event and CLKxC = '1' and RSTxR = '0';
+
+        -- Press correct buttons
+        -----------------------------------
+
+        -- 0
+        wait for 0.5ms;
+        wait until CLKxC'event and CLKxC = '1';
+        wait for CLK_STIM;
+        Push0xS <= '1';
+
+        wait for 0.25ms;
+        wait until CLKxC'event and CLKxC = '1';
+        wait for CLK_STIM;
+        Push0xS <= '0';
+
+        -- 2
+        wait for 0.5ms;
+        wait until CLKxC'event and CLKxC = '1';
+        wait for CLK_STIM;
+        Push2xS <= '1';
+
+        wait for 0.25ms;
+        wait until CLKxC'event and CLKxC = '1';
+        wait for CLK_STIM;
+        Push2xS <= '0';
+
+        -- 1
+        wait for 0.5ms;
+        wait until CLKxC'event and CLKxC = '1';
+        wait for CLK_STIM;
+        Push1xS <= '1';
+
+        wait for 0.25ms;
+        wait until CLKxC'event and CLKxC = '1';
+        wait for CLK_STIM;
+        Push1xS <= '0';
+
+        -- Press wrong buttons
+        -----------------------------------
+        wait until CLKxC'event and CLKxC = '1' and RLEDxS = '1';
+
+        -- 0
+        wait for 0.5ms;
+        wait until CLKxC'event and CLKxC = '1';
+        wait for CLK_STIM;
+
+        Push0xS <= '1';
+        wait for 0.25ms;
+        wait until CLKxC'event and CLKxC = '1';
+        wait for CLK_STIM;
+        Push0xS <= '0';
+
+        -- 3
+        wait for 0.5ms;
+        wait until CLKxC'event and CLKxC = '1';
+        wait for CLK_STIM;
+
+        Push3xS <= '1';
+        wait for 0.25ms;
+        wait until CLKxC'event and CLKxC = '1';
+        wait for CLK_STIM;
+        Push3xS <= '0';
+
+        -- 1
+        wait for 0.5ms;
+        wait until CLKxC'event and CLKxC = '1';
+        wait for CLK_STIM;
+        Push1xS <= '1';
+
+        wait for 0.25ms;
+        wait until CLKxC'event and CLKxC = '1';
+        wait for CLK_STIM;
+        Push1xS <= '0';
+
+        wait for 0.5ms;
+        stop(0);
+    end process p_stim;
+
+end architecture tb;
+```
+
+## Example for a VHDL Testbench (Lab04 Arbiter)
+```vhdl
+--=============================================================================
+-- @file arbiter_tb.vhdl
+--=============================================================================
+-- Standard library
+library ieee;
+library std;
+-- Standard packages
+use std.env.all;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+--=============================================================================
+--
+-- arbiter_tb
+--
+-- @brief This file specifies the testbench of the arbiter
+--
+--=============================================================================
+
+
+--=============================================================================
+-- ENTITY DECLARATION FOR ARBITER_TB
+--=============================================================================
+entity arbiter_tb is
+end entity arbiter_tb;
+
+--=============================================================================
+-- ARCHITECTURE DECLARATION
+--=============================================================================
+architecture tb of arbiter_tb is
+
+--=============================================================================
+-- TYPE AND CONSTANT DECLARATIONS
+--=============================================================================
+constant CLK_HIGH : time := 4 ns;
+constant CLK_LOW  : time := 4 ns;
+constant CLK_PER  : time := CLK_LOW + CLK_HIGH;
+constant CLK_STIM : time := 1 ns; -- Used to push us a little bit after the clock edge
+
+constant CNT_TIMEOUT    : integer := 25; -- Timeout after 200ns (for simulation) @125 MHz clock
+constant CNT_TIMEOUT_NS : time    := 200 ns;
+
+--=============================================================================
+-- SIGNAL DECLARATIONS
+--=============================================================================
+signal CLKxC  : std_logic := '0';
+signal RSTxR  : std_logic := '1';
+signal Key0xS : std_logic := '0';
+signal Key1xS : std_logic := '0';
+
+signal GLED0xS : std_logic;
+signal RLED0xS : std_logic;
+signal GLED1xS : std_logic;
+signal RLED1xS : std_logic;
+
+--=============================================================================
+-- COMPONENT DECLARATIONS
+--=============================================================================
+
+component arbiter is
+    generic (
+        CNT_TIMEOUT : integer := 250000000
+    );
+    port (
+        CLKxCI : in std_logic;
+        RSTxRI : in std_logic;
+
+        Key0xSI : in std_logic;
+        Key1xSI : in std_logic;
+
+        GLED0xSO : out std_logic;
+        RLED0xSO : out std_logic;
+        GLED1xSO : out std_logic;
+        RLED1xSO : out std_logic
+    );
+end component;
+
+--=============================================================================
+-- ARCHITECTURE BEGIN
+--=============================================================================
+begin
+
+    --=============================================================================
+    -- COMPONENT INSTANTIATIONS
+    --=============================================================================
+    --------------------------------------------------------------------------
+    -- The design under test
+    --------------------------------------------------------------------------
+    dut: arbiter
+        generic map (
+            CNT_TIMEOUT => CNT_TIMEOUT
+        )
+        port map (
+            CLKxCI => CLKxC,
+            RSTxRI => RSTxR,
+
+            Key0xSI => Key0xS,
+            Key1xSI => Key1xS,
+
+            GLED0xSO => GLED0xS,
+            RLED0xSO => RLED0xS,
+            GLED1xSO => GLED1xS,
+            RLED1xSO => RLED1xS
+        );
+
+    --=============================================================================
+    -- CLOCK PROCESS
+    -- Process for generating the clock signal
+    --=============================================================================
+    p_clock: process is
+    begin
+        CLKxC <= '0';
+        wait for CLK_LOW;
+        CLKxC <= '1';
+        wait for CLK_HIGH;
+    end process p_clock;
+
+    --=============================================================================
+    -- RESET PROCESS
+    -- Process for generating initial reset
+    --=============================================================================
+    p_reset: process is
+    begin
+        RSTxR <= '1';
+        wait until rising_edge(CLKxC);    -- Align to clock rising edge
+        wait for (2*CLK_PER + CLK_STIM);  -- Align to CLK_STIM ns after rising edge
+        RSTxR <= '0';
+        wait;
+    end process p_reset;
+
+    --=============================================================================
+    -- TEST PROCESSS
+    --=============================================================================
+    p_stim: process is
+    begin
+
+        -- Initial state
+        Key0xS <= '0';
+        Key1xS <= '0';
+
+        -- TEST A1
+        wait until CLKxC'event and CLKxC = '1' and RSTxR = '0';
+        wait for CLK_STIM;
+
+        report
+        lf & "************************************************************" &
+        lf & "Test A1: U0 requests and access is granted";
+
+        Key0xS <= '1';
+
+        wait until CLKxC'event and CLKxC = '1' and GLED0xS = '1';
+        wait for 3*CNT_TIMEOUT_NS;
+
+        wait until CLKxC'event and CLKxC = '1';
+        wait for CLK_STIM;
+        Key0xS <= '0';
+
+        -- TEST A2
+        wait until CLKxC'event and CLKxC = '1';
+        wait for CLK_STIM;
+
+        report
+        lf & "************************************************************" &
+        lf & "Test A2: U1 requests and access is granted";
+
+        Key1xS <= '1';
+
+        wait until CLKxC'event and CLKxC = '1' and GLED1xS = '1';
+        wait for 3*CNT_TIMEOUT_NS;
+
+        wait until CLKxC'event and CLKxC = '1';
+        wait for CLK_STIM;
+        Key1xS <= '0';
+
+        -- TEST B1
+        wait until CLKxC'event and CLKxC = '1';
+        wait for CLK_STIM;
+
+        report
+        lf & "************************************************************" &
+        lf & "Test B1" &
+        lf & "1) U1 requests and access is granted" &
+        lf & "2) U0 requests access while U1 continues request, but U0 releases before the timeout";
+
+        Key1xS <= '1';
+
+        wait until CLKxC'event and CLKxC = '1' and GLED1xS = '1';
+        wait for CLK_STIM;
+        Key0xS <= '1';
+
+        wait for CNT_TIMEOUT_NS/2;
+        wait until CLKxC'event and CLKxC = '1';
+        wait for CLK_STIM;
+        Key0xS <= '0';
+
+        wait for 2*CNT_TIMEOUT_NS;
+        wait until CLKxC'event and CLKxC = '1';
+        wait for CLK_STIM;
+        Key1xS <= '0';
+
+        -- TEST B2
+        wait until CLKxC'event and CLKxC = '1';
+        wait for CLK_STIM;
+
+        report
+        lf & "************************************************************" &
+        lf & "Test B2" &
+        lf & "1) U0 requests and access is granted" &
+        lf & "2) U1 requests access while U0 continues request, but U1 releases before the timeout";
+
+        Key0xS <= '1';
+
+        wait until CLKxC'event and CLKxC = '1' and GLED0xS = '1';
+        wait for CLK_STIM;
+        Key1xS <= '1';
+
+        wait for CNT_TIMEOUT_NS/2;
+        wait until CLKxC'event and CLKxC = '1';
+        wait for CLK_STIM;
+        Key1xS <= '0';
+
+        wait for 2*CNT_TIMEOUT_NS;
+        wait until CLKxC'event and CLKxC = '1';
+        wait for CLK_STIM;
+        Key0xS <= '0';
+
+        -- TEST C1
+        wait until CLKxC'event and CLKxC = '1';
+        wait for CLK_STIM;
+
+        report
+        lf & "************************************************************" &
+        lf & "Test C1" &
+        lf & "1) U0 requests and access is granted" &
+        lf & "2) U0 release access almost immediately after" &
+        lf & "3) U0 requests access again" &
+        lf & "4) U1 request access almost immediately after (but has to wait for the timeout)";
+
+        Key0xS <= '1';
+
+        wait until CLKxC'event and CLKxC = '1' and GLED0xS = '1';
+        wait for CLK_STIM;
+        Key0xS <= '0';
+
+        wait until CLKxC'event and CLKxC = '1';
+        wait for CLK_STIM;
+        Key0xS <= '1';
+
+        wait until CLKxC'event and CLKxC = '1';
+        wait for CLK_STIM;
+        Key1xS <= '1';
+
+        wait for 2*CNT_TIMEOUT_NS;
+        wait until CLKxC'event and CLKxC = '1';
+        wait for CLK_STIM;
+        Key0xS <= '0';
+        Key1xS <= '0';
+
+        -- TEST D1
+        wait until CLKxC'event and CLKxC = '1';
+        wait for CLK_STIM;
+
+        report
+        lf & "************************************************************" &
+        lf & "Test D1" &
+        lf & "1) U0 requests and access is granted" &
+        lf & "2) FSM goes into WAIT_REQ1 where U0 keeps it access request" &
+        lf & "3) In WAIT_REQ1, U1 makes a request and keeps this high";
+
+        Key0xS <= '1';
+
+        wait until CLKxC'event and CLKxC = '1' and GLED0xS = '1';
+        wait for CLK_STIM;
+
+        wait for (3*CNT_TIMEOUT_NS)/2;
+        wait until CLKxC'event and CLKxC = '1';
+        wait for CLK_STIM;
+        Key1xS <= '1';
+
+        wait for 1 us;
+        wait until CLKxC'event and CLKxC = '1';
+        wait for CLK_STIM;
+        Key0xS <= '0';
+        Key1xS <= '0';
+
+        -- TEST E1
+        wait until CLKxC'event and CLKxC = '1';
+        wait for CLK_STIM;
+
+        report
+        lf & "************************************************************" &
+        lf & "Test E1" &
+        lf & "1) U0 requests and access is granted" &
+        lf & "2) U1 requests access while U0 continues request" &
+        lf & "3) At a timeout, U1 is granted access" &
+        lf & "We let this run for some time to see the arbitration";
+
+        Key0xS <= '1';
+
+        wait until CLKxC'event and CLKxC = '1' and GLED0xS = '1';
+        wait for CLK_STIM;
+        Key1xS <= '1';
+
+        wait for 2 us;
+
+        stop(0);
+
+    end process p_stim;
+
+
+    --=============================================================================
+    -- VERIFICATION PROCESSS
+    -- Demonstration of how to write a process to verify properties on the inputs
+    -- and outputs using assert statements which check the truth of the condition
+    -- Note that this process runs in paralell and this makes checking much easier
+    --=============================================================================
+    p_verif: process is
+    begin
+
+        -- Wait until reset has happened
+        wait until CLKxC'event and CLKxC = '1' and RSTxR = '0';
+        -- Wait to check after 2*CLK_STIM as inputs are applied at 1*CLK_STIM
+        wait for 2*CLK_STIM;
+
+        -- Assert that we NEVER (not) observe both GLD0xS and GLED1xS HIGH at the same time
+        -- It is generally easier to just write out the condition you don't want to happend and
+        -- then write not in front of it
+        assert not (GLED0xS = '1' and GLED1xS = '1')
+        report "not (GLED0xS = '1' and GLED1xS = '1')" &
+            lf & "GLED0xS = " & std_logic'image(GLED0xS) &
+            lf & "GLED1xS = " & std_logic'image(GLED1xS) severity error;
+
+        -- Assert that we NEVER (not) observe both RLED0xS and RLED1xS HIGH at the same time
+        assert not (RLED0xS = '1' and RLED1xS = '1')
+        report "not (RLED0xS = '1' and RLED1xS = '1')" &
+            lf & "RLED0xS = " & std_logic'image(RLED0xS) &
+            lf & "RLED1xS = " & std_logic'image(RLED1xS) severity error;
+
+        -- Assert that we NEVER (not) observe both GLED0xS and RLED0xS HIGH at the same time
+        assert not (GLED0xS = '1' and RLED0xS = '1')
+        report "not (GLED0xS = '1' and RLED0xS = '1')" &
+            lf & "GLED0xS = " & std_logic'image(GLED0xS) &
+            lf & "RLED0xS = " & std_logic'image(RLED0xS) severity error;
+
+        -- Assert that we NEVER (not) observe both GLED1xS and RLED1xS HIGH at the same time
+        assert not (GLED1xS = '1' and RLED1xS = '1')
+        report "not (GLED1xS = '1' and RLED1xS = '1')" &
+            lf & "GLED1xS = " & std_logic'image(GLED1xS) &
+            lf & "RLED1xS = " & std_logic'image(RLED1xS) severity error;
+
+        -- Check that if either key is pressed, then a green LED must be HIGH.
+        assert not ((Key0xS = '1' or Key1xS = '1') and (GLED0xS = '0' and GLED1xS = '0'))
+        report "((Key0xS = '1' or Key1xS = '1') and (GLED0xS = '0' and GLED1xS = '0'))" &
+            lf & "Key0xS = " & std_logic'image(Key0xS) &
+            lf & "Key1xS = " & std_logic'image(Key1xS) &
+            lf & "GLED0xS = " & std_logic'image(GLED0xS) &
+            lf & "GLED1xS = " & std_logic'image(GLED1xS) severity error;
+
+    end process p_verif;
+
+end architecture tb;
+--=============================================================================
+-- ARCHITECTURE END
+--=============================================================================
+```
